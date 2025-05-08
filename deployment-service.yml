@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bloggingapp-deployment
+  name: blogginapp-deployment
 spec:
   selector:
     matchLabels:
-      app: bloggingapp
+      app: blogginapp
   replicas: 2
   template:
     metadata:
       labels:
-        app: bloggingapp
+        app: blogginapp
     spec:
       containers:
-        - name: bloggingapp
-          image: adijaiswal/bloggingapp:latest # Updated image to private DockerHub image
+        - name: blogginapp
+          image: titsaa/blogginapp:latest # Updated image to private DockerHub image
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -24,10 +24,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bloggingapp-ssvc
+  name: blogginapp-ssvc
 spec:
   selector:
-    app: bloggingapp
+    app: blogginapp
   ports:
     - protocol: "TCP"
       port: 80
