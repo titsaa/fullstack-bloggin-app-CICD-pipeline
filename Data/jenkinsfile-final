@@ -1,0 +1,151 @@
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+        maven 'maven3'
+    }
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        EMAIL_RECIPIENT = 'lioneltitsaa@gmail.com'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', credentialsId: 'gitCred', url: 'https://github.com/titsaa/fullstack-bloggin-app-CICD-pipeline.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh "mvn compile"
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh "mvn test"
+            }
+        }
+
+        stage('Trivy FS Scan') {
+            steps {
+                sh "trivy fs --format table -o fs.html ."
+            }
+        }
+
+        stage('Sonarqube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-scanner') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Bloggin-app -Dsonar.projectKey=Bloggin-app \
+                    -Dsonar.java.binaries=target'''
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Publish Artifact') {
+            steps {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                    sh 'mvn deploy'
+                }
+            }
+        }
+        stage('Docker Build & Tag'){
+            steps {
+               script{
+                   withDockerRegistry(credentialsId: 'Docker-cred', toolName: 'docker') {
+                       sh 'docker build -t titsaa/blogginapp:latest .'
+                 }
+               } 
+            }
+        }
+        
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --format table -o image.html titsaa/blogginapp:latest"
+            }
+        }
+        
+        stage('Docker Push Image'){
+            steps {
+               script{
+                   withDockerRegistry(credentialsId: 'Docker-cred', toolName: 'docker') {
+                       sh 'docker push titsaa/blogginapp:latest '
+                 }
+               } 
+            }
+        }
+        
+        stage('K8-Deployment'){
+            steps{
+                withKubeConfig(caCertificate: '', clusterName: 'devopsshack-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://9DAADDD76CF6F95551FCAAE2BD8155F2.gr7.us-east-1.eks.amazonaws.com') {
+                sh 'kubectl apply -f deployment-service.yml'
+                sleep 20
+            }
+            }
+        }
+        
+        stage('Verify Deployment') {
+    steps {
+        withKubeConfig(
+            caCertificate: '', 
+            clusterName: 'devopsshack-cluster', 
+            contextName: '', 
+            credentialsId: 'k8-cred', 
+            namespace: 'webapps', 
+            restrictKubeConfigAccess: false, 
+            serverUrl: 'https://9DAADDD76CF6F95551FCAAE2BD8155F2.gr7.us-east-1.eks.amazonaws.com'
+        ) {
+            sh '''
+                kubectl get pods
+                kubectl get svc
+            '''
+        }
+    }
+}
+
+    }
+    post{
+    always{
+        script{
+            def jobName = env.JOB_NAME
+            def buildNumber = env.BUILD_NUMBER
+            def pipelineStatus = currentBuild.result ?: "UNKNOWN"
+            def pipelineColor = pipelineStatus.toUpperCase() == "SUCCESS" ? "GREEN" : "RED" 
+
+        def body = """
+
+            <html>
+            <body>
+            <div style = "border: 4px solid ${pipelineColor}; padding: 10px;">
+            <h2>${jobName} - build ${buildNumber}</h2>
+            <div style = "background-color: ${pipelineColor}; padding: 10px;">
+            <h3 style = "color: white;">PipelineStatus = ${pipelineStatus.toUpperCase()}</h3>
+            <p>Check the <a href="${BUILD_URL}">console output</a>.</p>
+                 </div>
+                    </div>
+        <body>
+</html>
+"""
+emailext (
+    subject: "${jobName} build - ${buildNumber} ${pipelineStatus.toUpperCase()}",
+    body: body,
+    to: "lioneltitsaa@gmail.com",
+    from: "jenkins@example.com",
+    replyTo: "jenkins@example.com",
+    mimeType: "text/html"
+    )
+        }
+    
+    }
+    
+}
+}
