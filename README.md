@@ -257,9 +257,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 > **DISCLAIMER:** Do not commit any real API tokens or passwords to your public repository. All secrets above are illustrative.
 
-```
 
----
-
-Let me know if you'd like this saved as a downloadable file or want a `LICENSE`, `.gitignore`, or sample `Jenkinsfile` included.
-```
