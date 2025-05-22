@@ -250,7 +250,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 👥 Contributors
 
-* [Your Name](https://github.com/yourusername)
+* Titsa'a Ndipowa (https://github.com/titsaa)
 * Open to contributions! Fork this repo and open a PR.
 
 ---
